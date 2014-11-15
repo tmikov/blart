@@ -35,8 +35,6 @@ var symbols = [
     { n: 'KOVOL Index' /*, m:1e3*/ },
     { n: 'VOLSM Index' },
     { n: 'TWVOLU Index' },
-    { n: 'IBM US Equity', m: 1e3 },
-    { n: 'cusip/912810RE0@BGN' },
 ];
 var symMap = new StrMap(); //< map from correlator id to Symbol
 var curValues = {};
