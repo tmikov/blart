@@ -48,8 +48,8 @@ var symbols: Symbol[] = [
     { n: 'VOLSM Index'},
     { n: 'TWVOLU Index'},
 
-    { n: 'IBM US Equity', m:1e3 },
-    { n: 'cusip/912810RE0@BGN' },
+//    { n: 'IBM US Equity', m:1e3 },
+//    { n: 'cusip/912810RE0@BGN' },
 ];
 
 var symMap = new StrMap<Symbol>(); //< map from correlator id to Symbol
