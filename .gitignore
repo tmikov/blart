@@ -1,2 +1,5 @@
 /node_modules/
 .*.swp
+*.js.map
+/*.js
+/tslib/*.js

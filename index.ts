@@ -20,7 +20,7 @@ var info = debugMod("blart:info");
 var error = debugMod("blart.error");
 
 var loadConfig = require("./lib/config");
-import StrMap = require("./lib/StrMap");
+import StrMap = require("./tslib/StrMap");
 
 interface Symbol
 {
