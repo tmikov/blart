@@ -1,4 +1,4 @@
-/// <reference path="blpapi.d.ts" />
+/// <reference path="typings/blpapi/blpapi.d.ts" />
 /// <reference path="typings/node/node.d.ts" />
 /// <reference path="typings/bluebird/bluebird.d.ts" />
 /// <reference path="typings/debug/debug.d.ts" />
@@ -39,7 +39,9 @@ var symbols = [
 var symMap = new StrMap(); //< map from correlator id to Symbol
 var curValues = {};
 var lastRequestTime;
+var requestCount = 0;
 var corid = 0;
+var startTime;
 /**
  * Create a function do add a group of listeners which are all automatically
  * removed when any one of them fires.
@@ -64,6 +66,16 @@ function listenGroup(emitter) {
 }
 function timeSeconds() {
     return process.hrtime()[0];
+}
+function uptime() {
+    var t = timeSeconds() - startTime;
+    var res = { days: 0, hours: 0, minutes: 0 };
+    t /= 60;
+    res.minutes = (t % 60) | 0;
+    t /= 60;
+    res.hours = (t % 24) | 0;
+    res.days = (t / 24) | 0;
+    return res;
 }
 try {
     var config = loadConfig().get();
@@ -136,8 +148,14 @@ function subscribe(symbols) {
 }
 startSession().then(openService.bind(null, "//blp/mktdata")).then(subscribe.bind(null, symbols));
 lastRequestTime = timeSeconds() - config.interval - 20;
+startTime = timeSeconds();
 var app = connect();
-app.use(function (req, res, next) {
+app.use("/monitor", function (req, res, next) {
+    res.setHeader("content-type", "text/plain");
+    var t = uptime();
+    res.end("uptime: " + t.days + "d " + t.hours + "h " + t.minutes + "m\n" + "requests: " + requestCount + "\n");
+});
+app.use("/", function (req, res, next) {
     // Authorize
     var q = qs.parse(parseurl(req).query);
     if (q.token !== config.token) {
@@ -151,6 +169,7 @@ app.use(function (req, res, next) {
         return res.end('Rate limited');
     }
     lastRequestTime = tm;
+    ++requestCount;
     // Send data
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify(curValues));
