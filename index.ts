@@ -1,4 +1,3 @@
-/// <reference path="typings/blpapi/blpapi.d.ts" />
 /// <reference path="typings/tsd.d.ts" />
 
 import http = require("http");
