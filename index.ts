@@ -55,7 +55,9 @@ var symbols: Symbol[] = [
 var symMap = new StrMap<Symbol>(); //< map from correlator id to Symbol
 var curValues = {};
 var lastRequestTime: number;
+var requestCount: number = 0;
 var corid = 0;
+var startTime: number;
 
 
 /**
@@ -86,6 +88,18 @@ function listenGroup ( emitter: any ): (name: string, cb: Function)=>void
 function timeSeconds (): number
 {
     return process.hrtime()[0];
+}
+
+function uptime (): {days: number; hours: number; minutes: number}
+{
+    var t = timeSeconds() - startTime;
+    var res = {days:0, hours:0, minutes:0};
+    t /= 60;
+    res.minutes = (t % 60) | 0;
+    t /= 60;
+    res.hours = (t % 24) | 0;
+    res.days = (t / 24) | 0;
+    return res;
 }
 
 try {
@@ -172,8 +186,18 @@ startSession()
 
 
 lastRequestTime = timeSeconds() - config.interval - 20;
+startTime = timeSeconds();
+
 var app = connect();
-app.use( (req: http.ServerRequest, res: http.ServerResponse, next: Function) => {
+
+app.use( "/monitor", (req: http.ServerRequest, res: http.ServerResponse, next: Function) => {
+    res.setHeader("content-type", "text/plain");
+    var t = uptime();
+    res.end( "uptime: "+t.days+"d "+t.hours+"h "+t.minutes+"m\n"+
+             "requests: "+requestCount+"\n" );
+});
+
+app.use( "/", (req: http.ServerRequest, res: http.ServerResponse, next: Function) => {
     // Authorize
     var q = qs.parse(parseurl(req).query);
     if (q.token !== config.token) {
@@ -188,6 +212,7 @@ app.use( (req: http.ServerRequest, res: http.ServerResponse, next: Function) => 
         return res.end('Rate limited');
     }
     lastRequestTime = tm;
+    ++requestCount;
 
     // Send data
     res.setHeader("content-type", "application/json");
