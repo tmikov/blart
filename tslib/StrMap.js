@@ -1,4 +1,4 @@
-/// <reference path="../typings/node/node.d.ts" />
+/// <reference path="../typings/tsd.d.ts" />
 var StrMap = (function () {
     function StrMap() {
         this._size = 0;

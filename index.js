@@ -1,7 +1,4 @@
-/// <reference path="typings/blpapi/blpapi.d.ts" />
-/// <reference path="typings/node/node.d.ts" />
-/// <reference path="typings/bluebird/bluebird.d.ts" />
-/// <reference path="typings/debug/debug.d.ts" />
+/// <reference path="typings/tsd.d.ts" />
 var http = require("http");
 var https = require("https");
 var fs = require("fs");
@@ -15,7 +12,7 @@ var debug = debugMod("blart:debug");
 var info = debugMod("blart:info");
 var error = debugMod("blart.error");
 var loadConfig = require("./lib/config");
-var StrMap = require("./lib/StrMap");
+var StrMap = require("./tslib/StrMap");
 var symbols = [
     { n: 'VOLU Index' },
     { n: 'MVOLQE Index' },
