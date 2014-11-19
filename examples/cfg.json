@@ -1,0 +1,13 @@
+{
+    "port" : 8000,
+    "https" : false,
+    "key" : "/etc/blart/server.key",
+    "cert" : "/etc/blart/server.crt",
+    "token" : "aaa",
+    "limit" : 1,
+    "interval" : 15,
+    "api": {
+        "host": "10.8.8.1"
+    }
+}
+
