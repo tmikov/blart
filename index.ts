@@ -116,7 +116,7 @@ debug("Session created");
 
 var listen = listenGroup( blsess );
 
-function startSession ()
+function startSession (): Promise<any>
 {
     return new Promise((fullfill, reject) => {
         blsess.start();
@@ -131,7 +131,7 @@ function startSession ()
     });
 }
 
-function openService ( uri: string )
+function openService ( uri: string ): Promise<any>
 {
     return new Promise( (fullfill, reject) => {
         blsess.openService(uri, ++corid);
@@ -145,7 +145,7 @@ function openService ( uri: string )
     });
 }
 
-function subscribe ( symbols: Symbol[] )
+function subscribe ( symbols: Symbol[] ): void
 {
     var subs: blpapi.Subscription[] = [];
     symbols.forEach( (sym: Symbol) => {
