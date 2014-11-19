@@ -76,7 +76,6 @@ function onSubscriptionUpdate(sym, d) {
         if (sym.m)
             volume *= sym.m;
         curValues[sym.n] = volume;
-        console.log(curValues);
     }
     else {
     }
