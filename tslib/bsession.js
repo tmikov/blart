@@ -26,7 +26,7 @@ var BSession = (function (_super) {
     function BSession(cfg) {
         _super.call(this);
         this.cfg = cfg;
-        this.state = 0 /* NEW */;
+        this.stopRequested = false;
         this.corid = 0;
         this.symMap = new StrMap(); //< map from correlator id to Symbol
     }
@@ -45,12 +45,11 @@ var BSession = (function (_super) {
             _this.blsess.start();
             _this.listen("SessionStarted", function () {
                 debug("Session started");
-                _this.state = 1 /* STARTED */;
                 fullfill(void 0);
             });
             _this.listen("SessionStartupFailure", function (err) {
                 error("Session error", err);
-                _this.blsess.stop();
+                _this.stopAsync();
                 _this.onSessionTerminated();
                 reject(err);
             });
@@ -63,14 +62,19 @@ var BSession = (function (_super) {
             _this.blsess.openService(uri, ++_this.corid);
             _this.listen("ServiceOpened", function () {
                 debug("Service %s opened", uri);
-                _this.state = 2 /* SERVICE */;
                 fullfill(void 0);
             });
             _this.listen("ServiceOpenFailure", function (err) {
-                _this.blsess.stop();
+                _this.stopAsync();
                 reject(err);
             });
         });
+    };
+    BSession.prototype.stopAsync = function () {
+        if (!this.stopRequested) {
+            this.blsess.stop();
+            this.stopRequested = true;
+        }
     };
     BSession.prototype.onSessionTerminated = function () {
         info("onSessionTerminated");
@@ -78,18 +82,8 @@ var BSession = (function (_super) {
             error("Double onSessionTerminated");
             return;
         }
-        try {
-            this.blsess.stop();
-        }
-        catch (err) {
-            info("bogus error", err.message);
-        }
-        try {
-            this.blsess.destroy();
-        }
-        catch (err) {
-            info("bogus error", err.message);
-        }
+        this.stopAsync();
+        this.blsess.destroy();
         this.blsess = null;
         this.listen = null;
         this.emit("SessionTerminated");
