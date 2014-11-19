@@ -4,7 +4,10 @@ TSFLAGS=--module commonjs --target ES5 --sourceMap
 %.js : %.ts
 	$(TSC) $(TSFLAGS) $<
 
-all: index.js
+.PHONY: all dist clean
+
+all:
+	$(TSC) $(TSFLAGS) index.ts
 
 dist: all
 	@./mkdist.sh

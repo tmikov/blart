@@ -4,7 +4,6 @@ import http = require("http");
 import https = require("https");
 import fs = require("fs");
 
-import blpapi = require("blpapi");
 import Promise = require("bluebird");
 var connect = require("connect");
 var parseurl = require("parseurl");
@@ -17,9 +16,9 @@ var info = debugMod("blart:info");
 var error = debugMod("blart.error");
 
 var loadConfig = require("./lib/config");
-import StrMap = require("./tslib/StrMap");
+import bsession = require("./tslib/bsession");
 
-interface Symbol
+interface Symbol extends bsession.Symbol
 {
     n: string;
     m?: number;
@@ -49,38 +48,11 @@ var symbols: Symbol[] = [
 //    { n: 'cusip/912810RE0@BGN' },
 ];
 
-var symMap = new StrMap<Symbol>(); //< map from correlator id to Symbol
 var curValues = {};
 var lastRequestTime: number;
 var requestCount: number = 0;
-var corid = 0;
 var startTime: number;
-
-
-/**
- * Create a function do add a group of listeners which are all automatically
- * removed when any one of them fires.
- *
- * @param emitter  the even emitter where the listeners will be added.
- * @returns {function(string, Function): undefined}
- */
-function listenGroup ( emitter: any ): (name: string, cb: Function)=>void
-{
-    var listeners: {name: string; cb: Function}[] = [];
-
-    return (name: string, cb: Function) => {
-        var ourcb = (err, data) => {
-            for ( var i in listeners ){
-                var l = listeners[i];
-                emitter.removeListener( l.name, l.cb );
-            }
-            listeners = [];
-            cb( err, data );
-        };
-        emitter.addListener( name, ourcb );
-        listeners.push( {name: name, cb: ourcb });
-    }
-}
+var bs: bsession.BSession<Symbol> = null;
 
 function timeSeconds (): number
 {
@@ -106,81 +78,40 @@ try {
     process.exit( 1 );
 }
 
-try {
-    var blsess = new blpapi.Session({serverHost: config.api.host, serverPort: config.api.port });
-} catch(ex) {
-    console.log( "Error creating API connection", ex.message );
-    process.exit( 2 );
-}
-debug("Session created");
 
-var listen = listenGroup( blsess );
-
-function startSession (): Promise<any>
+function connectAPI (): void
 {
-    return new Promise((fullfill, reject) => {
-        blsess.start();
-        listen("SessionStarted", () => {
-            debug("Session started");
-            fullfill(void 0);
-        });
-        listen("SessionStartupFailure", (err) => {
-            error("Session error", err);
-            reject(err);
-        });
+    bs = new bsession.BSession<Symbol>( config.api );
+
+    bs.connect()
+      .then( ()=>{
+          bs.subscribe(symbols, config.interval, onSubscriptionUpdate);
+      })
+      .error( (err)=>{
+          error( err );
+      });
+
+    bs.addListener( "SessionTerminated", ()=>{
+        setTimeout( ()=>{
+            info( "Attempting to reconnect" );
+            connectAPI();
+        }, 5000 );
     });
 }
 
-function openService ( uri: string ): Promise<any>
+function onSubscriptionUpdate ( sym: Symbol, d: any )
 {
-    return new Promise( (fullfill, reject) => {
-        blsess.openService(uri, ++corid);
-        listen( "ServiceOpened", () => {
-            debug( "Service %s opened", uri );
-            fullfill(void 0);
-        });
-        listen( "ServiceOpenFailure", (err) => {
-            reject(err);
-        })
-    });
+    if (d.data.LAST_PRICE !== undefined && d.data.LAST_PRICE !== null) {
+        var volume = d.data.LAST_PRICE;
+        if (sym.m)
+            volume *= sym.m;
+        curValues[sym.n] = volume;
+//      console.log(curValues);
+    }
+    else {
+//      console.log(d);
+    }
 }
-
-function subscribe ( symbols: Symbol[] ): void
-{
-    var subs: blpapi.Subscription[] = [];
-    symbols.forEach( (sym: Symbol) => {
-        ++corid;
-        subs.push( {
-            security: "//blp/mktdata/" + sym.n,
-            fields: ["LAST_PRICE"],
-            options: { interval: config.interval },
-            correlation: corid
-        });
-        symMap.set( corid, sym );
-    });
-    blsess.subscribe( subs );
-    blsess.addListener("MarketDataEvents", (d) => {
-        debug(d.data.MKTDATA_EVENT_TYPE, d.data.MKTDATA_EVENT_SUBTYPE);
-        if (d.eventType === "SUBSCRIPTION_DATA") {
-            var sym: Symbol = symMap.get( d.correlations[0].value );
-            if (sym && d.data.LAST_PRICE !== undefined && d.data.LAST_PRICE !== null) {
-                var volume = d.data.LAST_PRICE;
-                if (sym.m)
-                    volume *= sym.m;
-                curValues[sym.n] = volume;
-//                console.log(curValues);
-            }
-            else {
-//                console.log(d);
-            }
-        }
-    });
-}
-
-startSession()
-    .then( openService.bind(null, "//blp/mktdata") )
-    .then( subscribe.bind(null, symbols) );
-
 
 lastRequestTime = timeSeconds() - config.interval - 20;
 startTime = timeSeconds();
@@ -228,6 +159,8 @@ if (config.https) {
 } else {
    server = http.createServer( app );
 }
+
+connectAPI();
 
 server.listen( config.port );
 server.once('listening', () => {
