@@ -3,3 +3,4 @@
 *.js.map
 /*.js
 /tslib/*.js
+/dist/

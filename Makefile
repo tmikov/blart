@@ -6,6 +6,9 @@ TSFLAGS=--module commonjs --target ES5 --sourceMap
 
 all: index.js
 
+dist: all
+	@./mkdist.sh
+
 clean:
 	@rm -f -v *.js *.js.map
 	@rm -f -v tslib/*.js tslib/*.js.map
