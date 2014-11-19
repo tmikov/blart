@@ -34,7 +34,7 @@ var symbols: Symbol[] = [
     { n: 'LSEVOL Index'},
     { n: 'HKSEVOL Index'},
     { n: 'SHCOVOL Index'},
-    { n: 'SPTXVOLC Index'},
+    { n: 'MVOL6C Index'},
     { n: 'VO399106 Index'},
     { n: 'DAXVOLC Index'},
     { n: 'VOLSMI Index'},
