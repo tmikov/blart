@@ -160,7 +160,7 @@ function subscribe ( symbols: Symbol[] ): void
     });
     blsess.subscribe( subs );
     blsess.addListener("MarketDataEvents", (d) => {
-//        console.log(d.data.MKTDATA_EVENT_TYPE, d.data.MKTDATA_EVENT_SUBTYPE);
+        debug(d.data.MKTDATA_EVENT_TYPE, d.data.MKTDATA_EVENT_SUBTYPE);
         if (d.eventType === "SUBSCRIPTION_DATA") {
             var sym: Symbol = symMap.get( d.correlations[0].value );
             if (sym && d.data.LAST_PRICE !== undefined && d.data.LAST_PRICE !== null) {
