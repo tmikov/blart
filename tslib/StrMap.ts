@@ -4,13 +4,13 @@ export = StrMap;
 
 class StrMap<T> {
     private _size: number = 0;
-    private _map:T[] = [];
+    private _map:{[index: string]: T} = {};
 
     get size():number { return this._size; }
 
     clear (): void {
         this._size = 0;
-        this._map = [];
+        this._map = {};
     }
 
     set( key, val: T ): void  {
