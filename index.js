@@ -12,17 +12,20 @@ var error = debugMod("blart.error");
 var loadConfig = require("./lib/config");
 var bsession = require("./tslib/bsession");
 var symbols = [
-    { n: 'VOLU Index' },
-    { n: 'MVOLQE Index' },
+    { n: 'NYAVOL Index' },
+    { n: 'CCMPVOL Index' },
+    { n: 'BL20VOLC Index' },
+    { n: 'VOLEOE Index' },
     { n: 'TAV1S Index' },
     { n: 'TAV2S Index' },
     { n: 'FRANVOL Index' },
     { n: 'LSEVOL Index' },
     { n: 'HKSEVOL Index' },
     { n: 'SHCOVOL Index' },
-    { n: 'MVOL6C Index' },
+    { n: 'TORVOLT Index' },
     { n: 'VO399106 Index' },
-    { n: 'DAXVOLC Index' },
+    { n: 'GRVOL Index' },
+    { n: 'IBOVVOLC Index' },
     { n: 'VOLSMI Index' },
     { n: 'BSEVOL Index' },
     { n: 'NSEVOL Index' },
@@ -30,6 +33,9 @@ var symbols = [
     { n: 'KOVOL Index', m: 1e-3 },
     { n: 'VOLSM Index' },
     { n: 'TWVOLU Index' },
+    { n: 'OMXS30VA Index', m: 1e-6 },
+    { n: 'VOLSP Index' },
+    { n: 'MEXBVOLC Index' },
 ];
 var curValues = {};
 var lastRequestTime;

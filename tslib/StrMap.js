@@ -2,7 +2,7 @@
 var StrMap = (function () {
     function StrMap() {
         this._size = 0;
-        this._map = [];
+        this._map = {};
     }
     Object.defineProperty(StrMap.prototype, "size", {
         get: function () {
@@ -13,7 +13,7 @@ var StrMap = (function () {
     });
     StrMap.prototype.clear = function () {
         this._size = 0;
-        this._map = [];
+        this._map = {};
     };
     StrMap.prototype.set = function (key, val) {
         var mkey = mangle(key);
