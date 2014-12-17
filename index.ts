@@ -9,6 +9,9 @@ var connect = require("connect");
 var parseurl = require("parseurl");
 var qs = require("qs");
 
+var cjson = require("cjson");
+import tv4 = require("tv4");
+
 import debugMod = require("debug");
 
 var debug = debugMod("blart:debug");
@@ -24,37 +27,27 @@ interface Symbol extends bsession.Symbol
     m?: number;
 }
 
-var symbols: Symbol[] = [
-    { n: 'NYAVOL Index'},
-    { n: 'CCMPVOL Index'},
-    { n: 'BL20VOLC Index'},
-    { n: 'VOLEOE Index'},
-    { n: 'TAV1S Index'},
-    { n: 'TAV2S Index'},
-    { n: 'FRANVOL Index'},
-    { n: 'LSEVOL Index'},
-    { n: 'HKSEVOL Index'},
-    { n: 'SHCOVOL Index'},
-    { n: 'TORVOLT Index'},
-    { n: 'VO399106 Index'},
-    { n: 'GRVOL Index'},
-    { n: 'IBOVVOLC Index'},
-    { n: 'VOLSMI Index'},
-    { n: 'BSEVOL Index'},
-    { n: 'NSEVOL Index'},
-    { n: 'ASXVOL Index'},
-    { n: 'KOVOL Index', m:1e-3},
-    { n: 'VOLSM Index'},
-    { n: 'TWVOLU Index'},
-    { n: 'OMXS30VA Index', m:1e-6},
-    { n: 'VOLSP Index'},
-    { n: 'MEXBVOLC Index'},
+var schema = {
+    "type": "array",
+    "items": {
+        "id": "Symbol",
+        "type": "object",
+        "properties": {
+          "n": {
+            "type": "string"
+          },
+          "m": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "n"
+        ],
+        "additionalProperties": false
+    }
+}
 
-
-//    { n: 'IBM US Equity', m:1e3 },
-//    { n: 'cusip/912810RE0@BGN' },
-];
-
+var symbols: Symbol[];
 var curValues = {};
 var lastRequestTime: number;
 var requestCount: number = 0;
@@ -114,12 +107,27 @@ function onSubscriptionUpdate ( sym: Symbol, d: any )
     }
 }
 
+function loadSymbols ( secpath: string ): Symbol[]
+{
+    try {
+        var obj = cjson.load( secpath );
+        var res = tv4.validateResult(obj, schema);
+    } catch(ex) {
+        throw new Error( secpath + ': ' + ex.message );
+    }
+    if (!res.valid)
+        throw new Error( secpath + ': ' + res.error.message || "Invalid security file" );
+    return obj;
+}
+
 function main (): void
 {
     try {
         config = loadConfig().get();
+        symbols = loadSymbols( config.secpath );
+        info( symbols );
     } catch(ex) {
-        console.log( ex.message );
+        console.error( ex.message );
         process.exit( 1 );
     }
 

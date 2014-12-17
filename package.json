@@ -6,12 +6,14 @@
   "dependencies": {
     "blpapi": "^0.1.10",
     "bluebird": "^2.3.11",
+    "cjson": "^0.3.0",
     "connect": "^3.3.3",
     "convict": "^0.6.0",
     "debug": "^2.1.0",
     "optimist": "^0.6.1",
     "parseurl": "^1.3.0",
-    "qs": "^2.3.3"
+    "qs": "^2.3.3",
+    "tv4": "^1.1.5"
   },
   "devDependencies": {},
   "scripts": {
