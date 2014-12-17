@@ -84,12 +84,13 @@ function connectAPI (): void
     bs = new bsession.BSession<Symbol>( config.api );
 
     bs.connect()
-      .then( ()=>{
-          bs.subscribe(symbols, config.interval, onSubscriptionUpdate);
-      })
-      .error( (err)=>{
-          error( err );
-      });
+        .then( ()=>{
+            info( "Successfully connected" );
+            bs.subscribe(symbols, config.interval, onSubscriptionUpdate);
+        })
+        .error( (err)=>{
+            error( err );
+        });
 
     bs.addListener( "SessionTerminated", ()=>{
         setTimeout( ()=>{
