@@ -4,3 +4,4 @@
 /*.js
 /tslib/*.js
 /dist/
+*.iws
