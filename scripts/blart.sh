@@ -1,4 +1,4 @@
 #!/bin/sh
 
-exec node index.js --cfg=/etc/blart/cfg.json
+DEBUG="*:error,*:info" exec node index.js --cfg=/etc/blart/cfg.json
 
