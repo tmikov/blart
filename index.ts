@@ -60,6 +60,7 @@ var lastRequestTime: number;
 var requestCount: number = 0;
 var startTime: number;
 var bs: bsession.BSession<Symbol> = null;
+var config;
 
 function timeSeconds (): number
 {
@@ -77,14 +78,6 @@ function uptime (): {days: number; hours: number; minutes: number}
     res.days = (t / 24) | 0;
     return res;
 }
-
-try {
-    var config = loadConfig().get();
-} catch(ex) {
-    console.log( ex.message );
-    process.exit( 1 );
-}
-
 
 function connectAPI (): void
 {
@@ -120,56 +113,68 @@ function onSubscriptionUpdate ( sym: Symbol, d: any )
     }
 }
 
-lastRequestTime = timeSeconds() - config.interval - 20;
-startTime = timeSeconds();
-
-var app = connect();
-
-app.use( "/monitor", (req: http.ServerRequest, res: http.ServerResponse, next: Function) => {
-    res.setHeader("content-type", "text/plain");
-    var t = uptime();
-    res.end( "uptime: "+t.days+"d "+t.hours+"h "+t.minutes+"m\n"+
-             "requests: "+requestCount+"\n" );
-});
-
-app.use( "/", (req: http.ServerRequest, res: http.ServerResponse, next: Function) => {
-    // Authorize
-    var q = qs.parse(parseurl(req).query);
-    if (q.token !== config.token) {
-        res.statusCode = 401;
-        return res.end('Unauthorized');
+function main (): void
+{
+    try {
+        config = loadConfig().get();
+    } catch(ex) {
+        console.log( ex.message );
+        process.exit( 1 );
     }
 
-    // Rate-limit
-    var tm = timeSeconds();
-    if (tm - lastRequestTime < config.limit) {
-        res.statusCode = 403;
-        return res.end('Rate limited');
+    lastRequestTime = timeSeconds() - config.interval - 20;
+    startTime = timeSeconds();
+
+    var app = connect();
+
+    app.use( "/monitor", (req: http.ServerRequest, res: http.ServerResponse, next: Function) => {
+        res.setHeader("content-type", "text/plain");
+        var t = uptime();
+        res.end( "uptime: "+t.days+"d "+t.hours+"h "+t.minutes+"m\n"+
+        "requests: "+requestCount+"\n" );
+    });
+
+    app.use( "/", (req: http.ServerRequest, res: http.ServerResponse, next: Function) => {
+        // Authorize
+        var q = qs.parse(parseurl(req).query);
+        if (q.token !== config.token) {
+            res.statusCode = 401;
+            return res.end('Unauthorized');
+        }
+
+        // Rate-limit
+        var tm = timeSeconds();
+        if (tm - lastRequestTime < config.limit) {
+            res.statusCode = 403;
+            return res.end('Rate limited');
+        }
+        lastRequestTime = tm;
+        ++requestCount;
+
+        // Send data
+        res.setHeader("content-type", "application/json");
+        res.end( JSON.stringify(curValues) );
+    });
+
+    var server;
+
+    if (config.https) {
+        var serverOptions:https.ServerOptions = {
+            key: fs.readFileSync(config.key),
+            cert: fs.readFileSync(config.cert),
+            passphrase: config.pass
+        };
+        server = https.createServer( serverOptions, app );
+    } else {
+        server = http.createServer( app );
     }
-    lastRequestTime = tm;
-    ++requestCount;
 
-    // Send data
-    res.setHeader("content-type", "application/json");
-    res.end( JSON.stringify(curValues) );
-});
+    connectAPI();
 
-var server;
-
-if (config.https) {
-   var serverOptions:https.ServerOptions = {
-       key: fs.readFileSync(config.key),
-       cert: fs.readFileSync(config.cert),
-       passphrase: config.pass
-   };
-   server = https.createServer( serverOptions, app );
-} else {
-   server = http.createServer( app );
+    server.listen( config.port );
+    server.once('listening', () => {
+        console.log( "Listening on", config.port );
+    });
 }
 
-connectAPI();
-
-server.listen( config.port );
-server.once('listening', () => {
-    console.log( "Listening on", config.port );
-});
+main();
