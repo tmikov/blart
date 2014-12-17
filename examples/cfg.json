@@ -6,8 +6,9 @@
     "token" : "aaa",
     "limit" : 1,
     "interval" : 15,
+    "secpath" : "examples/sec-list.json",
     "api": {
-        "host": "10.8.8.1"
+        "host": "127.0.0.1"
     }
 }
 

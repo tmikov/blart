@@ -5,43 +5,40 @@ var fs = require("fs");
 var connect = require("connect");
 var parseurl = require("parseurl");
 var qs = require("qs");
+var cjson = require("cjson");
+var tv4 = require("tv4");
 var debugMod = require("debug");
 var debug = debugMod("blart:debug");
 var info = debugMod("blart:info");
 var error = debugMod("blart.error");
 var loadConfig = require("./lib/config");
 var bsession = require("./tslib/bsession");
-var symbols = [
-    { n: 'NYAVOL Index' },
-    { n: 'CCMPVOL Index' },
-    { n: 'BL20VOLC Index' },
-    { n: 'VOLEOE Index' },
-    { n: 'TAV1S Index' },
-    { n: 'TAV2S Index' },
-    { n: 'FRANVOL Index' },
-    { n: 'LSEVOL Index' },
-    { n: 'HKSEVOL Index' },
-    { n: 'SHCOVOL Index' },
-    { n: 'TORVOLT Index' },
-    { n: 'VO399106 Index' },
-    { n: 'GRVOL Index' },
-    { n: 'IBOVVOLC Index' },
-    { n: 'VOLSMI Index' },
-    { n: 'BSEVOL Index' },
-    { n: 'NSEVOL Index' },
-    { n: 'ASXVOL Index' },
-    { n: 'KOVOL Index', m: 1e-3 },
-    { n: 'VOLSM Index' },
-    { n: 'TWVOLU Index' },
-    { n: 'OMXS30VA Index', m: 1e-6 },
-    { n: 'VOLSP Index' },
-    { n: 'MEXBVOLC Index' },
-];
+var schema = {
+    "type": "array",
+    "items": {
+        "id": "Symbol",
+        "type": "object",
+        "properties": {
+            "n": {
+                "type": "string"
+            },
+            "m": {
+                "type": "number"
+            }
+        },
+        "required": [
+            "n"
+        ],
+        "additionalProperties": false
+    }
+};
+var symbols;
 var curValues = {};
 var lastRequestTime;
 var requestCount = 0;
 var startTime;
 var bs = null;
+var config;
 function timeSeconds() {
     return process.hrtime()[0];
 }
@@ -55,16 +52,10 @@ function uptime() {
     res.days = (t / 24) | 0;
     return res;
 }
-try {
-    var config = loadConfig().get();
-}
-catch (ex) {
-    console.log(ex.message);
-    process.exit(1);
-}
 function connectAPI() {
     bs = new bsession.BSession(config.api);
     bs.connect().then(function () {
+        info("Successfully connected");
         bs.subscribe(symbols, config.interval, onSubscriptionUpdate);
     }).error(function (err) {
         error(err);
@@ -86,48 +77,72 @@ function onSubscriptionUpdate(sym, d) {
     else {
     }
 }
-lastRequestTime = timeSeconds() - config.interval - 20;
-startTime = timeSeconds();
-var app = connect();
-app.use("/monitor", function (req, res, next) {
-    res.setHeader("content-type", "text/plain");
-    var t = uptime();
-    res.end("uptime: " + t.days + "d " + t.hours + "h " + t.minutes + "m\n" + "requests: " + requestCount + "\n");
-});
-app.use("/", function (req, res, next) {
-    // Authorize
-    var q = qs.parse(parseurl(req).query);
-    if (q.token !== config.token) {
-        res.statusCode = 401;
-        return res.end('Unauthorized');
+function loadSymbols(secpath) {
+    try {
+        var obj = cjson.load(secpath);
+        var res = tv4.validateResult(obj, schema);
     }
-    // Rate-limit
-    var tm = timeSeconds();
-    if (tm - lastRequestTime < config.limit) {
-        res.statusCode = 403;
-        return res.end('Rate limited');
+    catch (ex) {
+        throw new Error(secpath + ': ' + ex.message);
     }
-    lastRequestTime = tm;
-    ++requestCount;
-    // Send data
-    res.setHeader("content-type", "application/json");
-    res.end(JSON.stringify(curValues));
-});
-var server;
-if (config.https) {
-    var serverOptions = {
-        key: fs.readFileSync(config.key),
-        cert: fs.readFileSync(config.cert),
-        passphrase: config.pass
-    };
-    server = https.createServer(serverOptions, app);
+    if (!res.valid)
+        throw new Error(secpath + ': ' + res.error.message || "Invalid security file");
+    return obj;
 }
-else {
-    server = http.createServer(app);
+function main() {
+    try {
+        config = loadConfig().get();
+        symbols = loadSymbols(config.secpath);
+        info(symbols);
+    }
+    catch (ex) {
+        console.error(ex.message);
+        process.exit(1);
+    }
+    lastRequestTime = timeSeconds() - config.interval - 20;
+    startTime = timeSeconds();
+    var app = connect();
+    app.use("/monitor", function (req, res, next) {
+        res.setHeader("content-type", "text/plain");
+        var t = uptime();
+        res.end("uptime: " + t.days + "d " + t.hours + "h " + t.minutes + "m\n" + "requests: " + requestCount + "\n");
+    });
+    app.use("/", function (req, res, next) {
+        // Authorize
+        var q = qs.parse(parseurl(req).query);
+        if (q.token !== config.token) {
+            res.statusCode = 401;
+            return res.end('Unauthorized');
+        }
+        // Rate-limit
+        var tm = timeSeconds();
+        if (tm - lastRequestTime < config.limit) {
+            res.statusCode = 403;
+            return res.end('Rate limited');
+        }
+        lastRequestTime = tm;
+        ++requestCount;
+        // Send data
+        res.setHeader("content-type", "application/json");
+        res.end(JSON.stringify(curValues));
+    });
+    var server;
+    if (config.https) {
+        var serverOptions = {
+            key: fs.readFileSync(config.key),
+            cert: fs.readFileSync(config.cert),
+            passphrase: config.pass
+        };
+        server = https.createServer(serverOptions, app);
+    }
+    else {
+        server = http.createServer(app);
+    }
+    connectAPI();
+    server.listen(config.port);
+    server.once('listening', function () {
+        console.log("Listening on", config.port);
+    });
 }
-connectAPI();
-server.listen(config.port);
-server.once('listening', function () {
-    console.log("Listening on", config.port);
-});
+main();
 //# sourceMappingURL=index.js.map
